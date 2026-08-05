@@ -33,8 +33,9 @@ The objective of this project is to manage library books, members, book issues, 
 
 This project is currently under development.
 
-## Developer
+## Developers
 
-* Name: Jerin
+* Name: Jerin Yesmin
+* Name: Akhi Moni
 * Language: C++
 * Project Type: Console Application
