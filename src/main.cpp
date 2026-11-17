@@ -1,8 +1,8 @@
 #include <iostream>
 #include <fstream>
-#include <vector>
+#include <sstream>
 #include <string>
-#include <limits>
+#include <vector>
 
 using namespace std;
 
@@ -20,278 +20,424 @@ struct Book
     int id;
     string title;
     string author;
-    string category;
-    int totalQuantity;
-    int availableQuantity;
+    int quantity;
+};
+
+// Member information
+struct Member
+{
+    int id;
+    string name;
+    string phone;
 };
 
 vector<Book> books;
+vector<Member> members;
 
-// Take a valid number from the user
-int readNumber(string message)
+// সঠিক number নেওয়ার function
+int readInt(const string &message)
 {
-    int number;
-
     while (true)
     {
         cout << YELLOW << message << RESET;
 
-        if (cin >> number)
+        string input;
+        getline(cin, input);
+
+        stringstream ss(input);
+        int value;
+        char extra;
+
+        if (ss >> value && !(ss >> extra))
         {
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            return number;
+            return value;
         }
 
         cout << RED << "Please enter a valid number.\n" << RESET;
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
     }
 }
 
-// Take non-empty text from the user
-string readText(string message)
+// খালি নয় এমন text নেওয়ার function
+string readText(const string &message)
 {
-    string text;
-
-    do
+    while (true)
     {
         cout << YELLOW << message << RESET;
-        getline(cin, text);
 
-        if (text.empty())
+        string value;
+        getline(cin, value);
+
+        if (!value.empty())
         {
-            cout << RED << "This field cannot be empty.\n" << RESET;
+            return value;
         }
-    }
-    while (text.empty());
 
-    return text;
+        cout << RED << "This field cannot be empty.\n" << RESET;
+    }
 }
 
-// Find a book using its ID
-Book* findBook(int id)
+// ID দিয়ে Book খোঁজা
+int findBookIndex(int id)
 {
-    for (Book& book : books)
+    for (int i = 0; i < static_cast<int>(books.size()); i++)
     {
-        if (book.id == id)
+        if (books[i].id == id)
         {
-            return &book;
+            return i;
         }
     }
 
-    return nullptr;
+    return -1;
 }
 
-// Save book data in books.txt
+// ID দিয়ে Member খোঁজা
+int findMemberIndex(int id)
+{
+    for (int i = 0; i < static_cast<int>(members.size()); i++)
+    {
+        if (members[i].id == id)
+        {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+// Book file-এ save করা
 void saveBooks()
 {
     ofstream file("books.txt");
 
-    for (Book book : books)
+    for (const Book &book : books)
     {
-        file << book.id << "\n";
-        file << book.title << "\n";
-        file << book.author << "\n";
-        file << book.category << "\n";
-        file << book.totalQuantity << "\n";
-        file << book.availableQuantity << "\n";
+        file << book.id << '|'
+             << book.title << '|'
+             << book.author << '|'
+             << book.quantity << '\n';
     }
 }
 
-// Load book data when the program starts
+// Book file থেকে load করা
 void loadBooks()
 {
+    books.clear();
+
     ifstream file("books.txt");
-    Book book;
+    string line;
 
-    while (file >> book.id)
+    while (getline(file, line))
     {
-        file.ignore(numeric_limits<streamsize>::max(), '\n');
+        string idText;
+        string title;
+        string author;
+        string quantityText;
 
-        getline(file, book.title);
-        getline(file, book.author);
-        getline(file, book.category);
+        stringstream ss(line);
 
-        file >> book.totalQuantity;
-        file >> book.availableQuantity;
-        file.ignore(numeric_limits<streamsize>::max(), '\n');
+        if (getline(ss, idText, '|') &&
+            getline(ss, title, '|') &&
+            getline(ss, author, '|') &&
+            getline(ss, quantityText))
+        {
+            try
+            {
+                Book book;
 
-        books.push_back(book);
+                book.id = stoi(idText);
+                book.title = title;
+                book.author = author;
+                book.quantity = stoi(quantityText);
+
+                books.push_back(book);
+            }
+            catch (...)
+            {
+                // ভুল line থাকলে বাদ যাবে
+            }
+        }
     }
 }
 
-// Add a new book
+// Member file-এ save করা
+void saveMembers()
+{
+    ofstream file("members.txt");
+
+    for (const Member &member : members)
+    {
+        file << member.id << '|'
+             << member.name << '|'
+             << member.phone << '\n';
+    }
+}
+
+// Member file থেকে load করা
+void loadMembers()
+{
+    members.clear();
+
+    ifstream file("members.txt");
+    string line;
+
+    while (getline(file, line))
+    {
+        string idText;
+        string name;
+        string phone;
+
+        stringstream ss(line);
+
+        if (getline(ss, idText, '|') &&
+            getline(ss, name, '|') &&
+            getline(ss, phone))
+        {
+            try
+            {
+                Member member;
+
+                member.id = stoi(idText);
+                member.name = name;
+                member.phone = phone;
+
+                members.push_back(member);
+            }
+            catch (...)
+            {
+                // ভুল line থাকলে বাদ যাবে
+            }
+        }
+    }
+}
+
+// Main Menu
+void showMainMenu()
+{
+    cout << BLUE;
+    cout << "\n     LIBRARY MANAGEMENT SYSTEM\n";
+    cout << "     -------------------------\n\n";
+    cout << RESET;
+
+    cout << CYAN;
+    cout << "1. Book Management\n";
+    cout << "2. Member Management\n";
+    cout << "3. Issue Book\n";
+    cout << "4. Return Book\n";
+    cout << "5. Borrowing History\n";
+    cout << "6. Library Summary\n";
+    cout << "7. Exit\n\n";
+    cout << RESET;
+}
+
+// Book Management Menu
+void showBookMenu()
+{
+    cout << BLUE;
+    cout << "\n     BOOK MANAGEMENT\n";
+    cout << "     ---------------\n\n";
+    cout << RESET;
+
+    cout << CYAN;
+    cout << "1. Add Book\n";
+    cout << "2. View All Books\n";
+    cout << "3. Search Book\n";
+    cout << "4. Update Book\n";
+    cout << "5. Delete Book\n";
+    cout << "6. Back to Main Menu\n\n";
+    cout << RESET;
+}
+
+// Add Book
 void addBook()
 {
-    cout << BLUE << "\nADD BOOK\n--------\n" << RESET;
+    cout << CYAN;
+    cout << "\nADD BOOK\n";
+    cout << "--------\n";
+    cout << RESET;
+
+    int id = readInt("Book ID: ");
+
+    if (findBookIndex(id) != -1)
+    {
+        cout << RED;
+        cout << "A book with this ID already exists.\n";
+        cout << RESET;
+        return;
+    }
 
     Book book;
-    book.id = readNumber("Book ID: ");
 
-    if (book.id <= 0)
-    {
-        cout << RED << "Book ID must be greater than zero.\n" << RESET;
-        return;
-    }
-
-    if (findBook(book.id) != nullptr)
-    {
-        cout << RED << "This Book ID already exists.\n" << RESET;
-        return;
-    }
-
+    book.id = id;
     book.title = readText("Book title: ");
     book.author = readText("Author name: ");
-    book.category = readText("Category: ");
-    book.totalQuantity = readNumber("Total quantity: ");
 
-    if (book.totalQuantity <= 0)
+    do
     {
-        cout << RED << "Quantity must be greater than zero.\n" << RESET;
-        return;
-    }
+        book.quantity = readInt("Quantity: ");
 
-    book.availableQuantity = book.totalQuantity;
+        if (book.quantity < 0)
+        {
+            cout << RED;
+            cout << "Quantity cannot be negative.\n";
+            cout << RESET;
+        }
+
+    } while (book.quantity < 0);
+
     books.push_back(book);
     saveBooks();
 
-    cout << GREEN << "Book added successfully.\n" << RESET;
+    cout << GREEN;
+    cout << "Book added successfully.\n";
+    cout << RESET;
 }
 
-// View all saved books
+// View All Books
 void viewAllBooks()
 {
-    cout << BLUE << "\nALL BOOKS\n---------\n" << RESET;
+    cout << CYAN;
+    cout << "\nALL BOOKS\n";
+    cout << "---------\n";
+    cout << RESET;
 
     if (books.empty())
     {
-        cout << RED << "No books found.\n" << RESET;
+        cout << RED;
+        cout << "No books found.\n";
+        cout << RESET;
         return;
     }
 
-    for (Book book : books)
+    for (const Book &book : books)
     {
-        cout << "Book ID   : " << book.id << "\n";
-        cout << "Title     : " << book.title << "\n";
-        cout << "Author    : " << book.author << "\n";
-        cout << "Category  : " << book.category << "\n";
-        cout << "Total     : " << book.totalQuantity << "\n";
-        cout << "Available : " << book.availableQuantity << "\n";
-        cout << "-------------------------\n";
+        cout << "Book ID  : " << book.id << '\n';
+        cout << "Title    : " << book.title << '\n';
+        cout << "Author   : " << book.author << '\n';
+        cout << "Quantity : " << book.quantity << '\n';
+        cout << "------------------------------\n";
     }
 }
 
-// Search a book by ID
+// Search Book
 void searchBook()
 {
-    cout << BLUE << "\nSEARCH BOOK\n-----------\n" << RESET;
+    cout << CYAN;
+    cout << "\nSEARCH BOOK\n";
+    cout << "-----------\n";
+    cout << RESET;
 
-    int id = readNumber("Enter Book ID: ");
-    Book* book = findBook(id);
+    int id = readInt("Enter Book ID: ");
+    int index = findBookIndex(id);
 
-    if (book == nullptr)
+    if (index == -1)
     {
-        cout << RED << "Book not found.\n" << RESET;
+        cout << RED;
+        cout << "Book not found.\n";
+        cout << RESET;
         return;
     }
 
-    cout << GREEN << "Book found successfully.\n" << RESET;
-    cout << "Book ID   : " << book->id << "\n";
-    cout << "Title     : " << book->title << "\n";
-    cout << "Author    : " << book->author << "\n";
-    cout << "Category  : " << book->category << "\n";
-    cout << "Total     : " << book->totalQuantity << "\n";
-    cout << "Available : " << book->availableQuantity << "\n";
+    const Book &book = books[index];
+
+    cout << GREEN;
+    cout << "Book found.\n";
+    cout << RESET;
+
+    cout << "Book ID  : " << book.id << '\n';
+    cout << "Title    : " << book.title << '\n';
+    cout << "Author   : " << book.author << '\n';
+    cout << "Quantity : " << book.quantity << '\n';
 }
 
-// Update a book
+// Update Book
 void updateBook()
 {
-    cout << BLUE << "\nUPDATE BOOK\n-----------\n" << RESET;
+    cout << CYAN;
+    cout << "\nUPDATE BOOK\n";
+    cout << "-----------\n";
+    cout << RESET;
 
-    int id = readNumber("Enter Book ID to update: ");
-    Book* book = findBook(id);
+    int id = readInt("Enter Book ID: ");
+    int index = findBookIndex(id);
 
-    if (book == nullptr)
+    if (index == -1)
     {
-        cout << RED << "Book not found.\n" << RESET;
+        cout << RED;
+        cout << "Book not found.\n";
+        cout << RESET;
         return;
     }
 
-    int issuedQuantity =
-        book->totalQuantity - book->availableQuantity;
+    books[index].title = readText("New title: ");
+    books[index].author = readText("New author name: ");
 
-    book->title = readText("New title: ");
-    book->author = readText("New author: ");
-    book->category = readText("New category: ");
-
-    int newQuantity = readNumber("New total quantity: ");
-
-    if (newQuantity <= 0 || newQuantity < issuedQuantity)
+    do
     {
-        cout << RED << "Invalid quantity. Update cancelled.\n" << RESET;
-        return;
-    }
+        books[index].quantity = readInt("New quantity: ");
 
-    book->totalQuantity = newQuantity;
-    book->availableQuantity = newQuantity - issuedQuantity;
+        if (books[index].quantity < 0)
+        {
+            cout << RED;
+            cout << "Quantity cannot be negative.\n";
+            cout << RESET;
+        }
+
+    } while (books[index].quantity < 0);
+
     saveBooks();
 
-    cout << GREEN << "Book updated successfully.\n" << RESET;
+    cout << GREEN;
+    cout << "Book updated successfully.\n";
+    cout << RESET;
 }
 
-// Delete a book
+// Delete Book
 void deleteBook()
 {
-    cout << BLUE << "\nDELETE BOOK\n-----------\n" << RESET;
+    cout << CYAN;
+    cout << "\nDELETE BOOK\n";
+    cout << "-----------\n";
+    cout << RESET;
 
-    int id = readNumber("Enter Book ID to delete: ");
+    int id = readInt("Enter Book ID: ");
+    int index = findBookIndex(id);
 
-    for (size_t i = 0; i < books.size(); i++)
+    if (index == -1)
     {
-        if (books[i].id == id)
-        {
-            if (books[i].availableQuantity < books[i].totalQuantity)
-            {
-                cout << RED;
-                cout << "Issued book cannot be deleted.\n";
-                cout << RESET;
-                return;
-            }
-
-            books.erase(books.begin() + i);
-            saveBooks();
-
-            cout << GREEN << "Book deleted successfully.\n" << RESET;
-            return;
-        }
+        cout << RED;
+        cout << "Book not found.\n";
+        cout << RESET;
+        return;
     }
 
-    cout << RED << "Book not found.\n" << RESET;
+    string answer = readText("Delete this book? (y/n): ");
+
+    if (answer == "y" || answer == "Y")
+    {
+        books.erase(books.begin() + index);
+        saveBooks();
+
+        cout << GREEN;
+        cout << "Book deleted successfully.\n";
+        cout << RESET;
+    }
+    else
+    {
+        cout << YELLOW;
+        cout << "Delete cancelled.\n";
+        cout << RESET;
+    }
 }
 
-// Book Management menu
+// Book Management চালানো
 void bookManagement()
 {
     int choice;
 
     do
     {
-        cout << BLUE;
-        cout << "\n     BOOK MANAGEMENT\n";
-        cout << "     ---------------\n\n";
-        cout << RESET;
-
-        cout << CYAN;
-        cout << "1. Add Book\n";
-        cout << "2. View All Books\n";
-        cout << "3. Search Book\n";
-        cout << "4. Update Book\n";
-        cout << "5. Delete Book\n";
-        cout << "6. Back to Main Menu\n\n";
-        cout << RESET;
-
-        choice = readNumber("Enter your choice: ");
+        showBookMenu();
+        choice = readInt("Enter your choice: ");
 
         switch (choice)
         {
@@ -316,45 +462,251 @@ void bookManagement()
                 break;
 
             case 6:
-                cout << YELLOW << "Returning to Main Menu...\n" << RESET;
+                cout << YELLOW;
+                cout << "Returning to Main Menu...\n";
+                cout << RESET;
                 break;
 
             default:
-                cout << RED << "Invalid choice. Please try again.\n" << RESET;
+                cout << RED;
+                cout << "Invalid choice. Please try again.\n";
+                cout << RESET;
         }
-    }
-    while (choice != 6);
+
+    } while (choice != 6);
 }
 
-// Main Menu
-void showMainMenu()
+// Member Management Menu
+void showMemberMenu()
 {
     cout << BLUE;
-    cout << "\n     LIBRARY MANAGEMENT SYSTEM\n";
-    cout << "     -------------------------\n\n";
+    cout << "\n     MEMBER MANAGEMENT\n";
+    cout << "     -----------------\n\n";
     cout << RESET;
 
     cout << CYAN;
-    cout << "1. Book Management\n";
-    cout << "2. Member Management\n";
-    cout << "3. Issue Book\n";
-    cout << "4. Return Book\n";
-    cout << "5. Borrowing History\n";
-    cout << "6. Library Summary\n";
-    cout << "7. Exit\n\n";
+    cout << "1. Add Member\n";
+    cout << "2. View All Members\n";
+    cout << "3. Search Member\n";
+    cout << "4. Update Member\n";
+    cout << "5. Delete Member\n";
+    cout << "6. Back to Main Menu\n\n";
     cout << RESET;
 }
 
+// Add Member
+void addMember()
+{
+    cout << CYAN;
+    cout << "\nADD MEMBER\n";
+    cout << "----------\n";
+    cout << RESET;
+
+    int id = readInt("Member ID: ");
+
+    if (findMemberIndex(id) != -1)
+    {
+        cout << RED;
+        cout << "A member with this ID already exists.\n";
+        cout << RESET;
+        return;
+    }
+
+    Member member;
+
+    member.id = id;
+    member.name = readText("Member name: ");
+    member.phone = readText("Phone number: ");
+
+    members.push_back(member);
+    saveMembers();
+
+    cout << GREEN;
+    cout << "Member added successfully.\n";
+    cout << RESET;
+}
+
+// View All Members
+void viewAllMembers()
+{
+    cout << CYAN;
+    cout << "\nALL MEMBERS\n";
+    cout << "-----------\n";
+    cout << RESET;
+
+    if (members.empty())
+    {
+        cout << RED;
+        cout << "No members found.\n";
+        cout << RESET;
+        return;
+    }
+
+    for (const Member &member : members)
+    {
+        cout << "Member ID : " << member.id << '\n';
+        cout << "Name      : " << member.name << '\n';
+        cout << "Phone     : " << member.phone << '\n';
+        cout << "------------------------------\n";
+    }
+}
+
+// Search Member
+void searchMember()
+{
+    cout << CYAN;
+    cout << "\nSEARCH MEMBER\n";
+    cout << "-------------\n";
+    cout << RESET;
+
+    int id = readInt("Enter Member ID: ");
+    int index = findMemberIndex(id);
+
+    if (index == -1)
+    {
+        cout << RED;
+        cout << "Member not found.\n";
+        cout << RESET;
+        return;
+    }
+
+    const Member &member = members[index];
+
+    cout << GREEN;
+    cout << "Member found.\n";
+    cout << RESET;
+
+    cout << "Member ID : " << member.id << '\n';
+    cout << "Name      : " << member.name << '\n';
+    cout << "Phone     : " << member.phone << '\n';
+}
+
+// Update Member
+void updateMember()
+{
+    cout << CYAN;
+    cout << "\nUPDATE MEMBER\n";
+    cout << "-------------\n";
+    cout << RESET;
+
+    int id = readInt("Enter Member ID: ");
+    int index = findMemberIndex(id);
+
+    if (index == -1)
+    {
+        cout << RED;
+        cout << "Member not found.\n";
+        cout << RESET;
+        return;
+    }
+
+    members[index].name = readText("New member name: ");
+    members[index].phone = readText("New phone number: ");
+
+    saveMembers();
+
+    cout << GREEN;
+    cout << "Member updated successfully.\n";
+    cout << RESET;
+}
+
+// Delete Member
+void deleteMember()
+{
+    cout << CYAN;
+    cout << "\nDELETE MEMBER\n";
+    cout << "-------------\n";
+    cout << RESET;
+
+    int id = readInt("Enter Member ID: ");
+    int index = findMemberIndex(id);
+
+    if (index == -1)
+    {
+        cout << RED;
+        cout << "Member not found.\n";
+        cout << RESET;
+        return;
+    }
+
+    string answer = readText("Delete this member? (y/n): ");
+
+    if (answer == "y" || answer == "Y")
+    {
+        members.erase(members.begin() + index);
+        saveMembers();
+
+        cout << GREEN;
+        cout << "Member deleted successfully.\n";
+        cout << RESET;
+    }
+    else
+    {
+        cout << YELLOW;
+        cout << "Delete cancelled.\n";
+        cout << RESET;
+    }
+}
+
+// Member Management চালানো
+void memberManagement()
+{
+    int choice;
+
+    do
+    {
+        showMemberMenu();
+        choice = readInt("Enter your choice: ");
+
+        switch (choice)
+        {
+            case 1:
+                addMember();
+                break;
+
+            case 2:
+                viewAllMembers();
+                break;
+
+            case 3:
+                searchMember();
+                break;
+
+            case 4:
+                updateMember();
+                break;
+
+            case 5:
+                deleteMember();
+                break;
+
+            case 6:
+                cout << YELLOW;
+                cout << "Returning to Main Menu...\n";
+                cout << RESET;
+                break;
+
+            default:
+                cout << RED;
+                cout << "Invalid choice. Please try again.\n";
+                cout << RESET;
+        }
+
+    } while (choice != 6);
+}
+
+// Program এখান থেকে শুরু
 int main()
 {
     loadBooks();
+    loadMembers();
 
     int choice;
 
     do
     {
         showMainMenu();
-        choice = readNumber("Enter your choice: ");
+        choice = readInt("Enter your choice: ");
 
         switch (choice)
         {
@@ -363,48 +715,46 @@ int main()
                 break;
 
             case 2:
-                cout << YELLOW
-                     << "Member Management will be added next.\n"
-                     << RESET;
+                memberManagement();
                 break;
 
             case 3:
-                cout << YELLOW
-                     << "Issue Book will be added later.\n"
-                     << RESET;
+                cout << YELLOW;
+                cout << "Issue Book will be added later.\n";
+                cout << RESET;
                 break;
 
             case 4:
-                cout << YELLOW
-                     << "Return Book will be added later.\n"
-                     << RESET;
+                cout << YELLOW;
+                cout << "Return Book will be added later.\n";
+                cout << RESET;
                 break;
 
             case 5:
-                cout << YELLOW
-                     << "Borrowing History will be added later.\n"
-                     << RESET;
+                cout << YELLOW;
+                cout << "Borrowing History will be added later.\n";
+                cout << RESET;
                 break;
 
             case 6:
-                cout << YELLOW
-                     << "Library Summary will be added later.\n"
-                     << RESET;
+                cout << YELLOW;
+                cout << "Library Summary will be added later.\n";
+                cout << RESET;
                 break;
 
             case 7:
-                cout << YELLOW
-                     << "Exiting the program...\n"
-                     << RESET;
+                cout << YELLOW;
+                cout << "Exiting the program...\n";
+                cout << RESET;
                 break;
 
             default:
-                cout << RED
-                     << "Invalid choice. Please try again.\n"
-                     << RESET;
+                cout << RED;
+                cout << "Invalid choice. Please try again.\n";
+                cout << RESET;
         }
-    }
-    while (choice != 7);
+
+    } while (choice != 7);
 
     return 0;
 }
