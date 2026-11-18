@@ -31,10 +31,22 @@ struct Member
     string phone;
 };
 
+// Issue and return information
+struct Borrowing
+{
+    int issueId;
+    int bookId;
+    int memberId;
+    string issueDate;
+    string returnDate;
+    bool returned;
+};
+
 vector<Book> books;
 vector<Member> members;
+vector<Borrowing> borrowings;
 
-// সঠিক number নেওয়ার function
+// Valid number input
 int readInt(const string &message)
 {
     while (true)
@@ -53,11 +65,13 @@ int readInt(const string &message)
             return value;
         }
 
-        cout << RED << "Please enter a valid number.\n" << RESET;
+        cout << RED;
+        cout << "Please enter a valid number.\n";
+        cout << RESET;
     }
 }
 
-// খালি নয় এমন text নেওয়ার function
+// Valid text input
 string readText(const string &message)
 {
     while (true)
@@ -72,11 +86,13 @@ string readText(const string &message)
             return value;
         }
 
-        cout << RED << "This field cannot be empty.\n" << RESET;
+        cout << RED;
+        cout << "This field cannot be empty.\n";
+        cout << RESET;
     }
 }
 
-// ID দিয়ে Book খোঁজা
+// Find book using Book ID
 int findBookIndex(int id)
 {
     for (int i = 0; i < static_cast<int>(books.size()); i++)
@@ -90,7 +106,7 @@ int findBookIndex(int id)
     return -1;
 }
 
-// ID দিয়ে Member খোঁজা
+// Find member using Member ID
 int findMemberIndex(int id)
 {
     for (int i = 0; i < static_cast<int>(members.size()); i++)
@@ -104,7 +120,7 @@ int findMemberIndex(int id)
     return -1;
 }
 
-// Book file-এ save করা
+// Save books
 void saveBooks()
 {
     ofstream file("books.txt");
@@ -118,7 +134,7 @@ void saveBooks()
     }
 }
 
-// Book file থেকে load করা
+// Load books
 void loadBooks()
 {
     books.clear();
@@ -153,13 +169,13 @@ void loadBooks()
             }
             catch (...)
             {
-                // ভুল line থাকলে বাদ যাবে
+                // Ignore damaged data
             }
         }
     }
 }
 
-// Member file-এ save করা
+// Save members
 void saveMembers()
 {
     ofstream file("members.txt");
@@ -172,7 +188,7 @@ void saveMembers()
     }
 }
 
-// Member file থেকে load করা
+// Load members
 void loadMembers()
 {
     members.clear();
@@ -204,10 +220,89 @@ void loadMembers()
             }
             catch (...)
             {
-                // ভুল line থাকলে বাদ যাবে
+                // Ignore damaged data
             }
         }
     }
+}
+
+// Save issue and return information
+void saveBorrowings()
+{
+    ofstream file("borrowings.txt");
+
+    for (const Borrowing &borrowing : borrowings)
+    {
+        file << borrowing.issueId << '|'
+             << borrowing.bookId << '|'
+             << borrowing.memberId << '|'
+             << borrowing.issueDate << '|'
+             << borrowing.returnDate << '|'
+             << borrowing.returned << '\n';
+    }
+}
+
+// Load issue and return information
+void loadBorrowings()
+{
+    borrowings.clear();
+
+    ifstream file("borrowings.txt");
+    string line;
+
+    while (getline(file, line))
+    {
+        string issueIdText;
+        string bookIdText;
+        string memberIdText;
+        string issueDate;
+        string returnDate;
+        string returnedText;
+
+        stringstream ss(line);
+
+        if (getline(ss, issueIdText, '|') &&
+            getline(ss, bookIdText, '|') &&
+            getline(ss, memberIdText, '|') &&
+            getline(ss, issueDate, '|') &&
+            getline(ss, returnDate, '|') &&
+            getline(ss, returnedText))
+        {
+            try
+            {
+                Borrowing borrowing;
+
+                borrowing.issueId = stoi(issueIdText);
+                borrowing.bookId = stoi(bookIdText);
+                borrowing.memberId = stoi(memberIdText);
+                borrowing.issueDate = issueDate;
+                borrowing.returnDate = returnDate;
+                borrowing.returned = stoi(returnedText) != 0;
+
+                borrowings.push_back(borrowing);
+            }
+            catch (...)
+            {
+                // Ignore damaged data
+            }
+        }
+    }
+}
+
+// Create automatic Issue ID
+int createIssueId()
+{
+    int largestId = 0;
+
+    for (const Borrowing &borrowing : borrowings)
+    {
+        if (borrowing.issueId > largestId)
+        {
+            largestId = borrowing.issueId;
+        }
+    }
+
+    return largestId + 1;
 }
 
 // Main Menu
@@ -262,6 +357,7 @@ void addBook()
         cout << RED;
         cout << "A book with this ID already exists.\n";
         cout << RESET;
+
         return;
     }
 
@@ -292,7 +388,7 @@ void addBook()
     cout << RESET;
 }
 
-// View All Books
+// View all books
 void viewAllBooks()
 {
     cout << CYAN;
@@ -305,6 +401,7 @@ void viewAllBooks()
         cout << RED;
         cout << "No books found.\n";
         cout << RESET;
+
         return;
     }
 
@@ -334,6 +431,7 @@ void searchBook()
         cout << RED;
         cout << "Book not found.\n";
         cout << RESET;
+
         return;
     }
 
@@ -365,6 +463,7 @@ void updateBook()
         cout << RED;
         cout << "Book not found.\n";
         cout << RESET;
+
         return;
     }
 
@@ -407,7 +506,21 @@ void deleteBook()
         cout << RED;
         cout << "Book not found.\n";
         cout << RESET;
+
         return;
+    }
+
+    // Issued book cannot be deleted
+    for (const Borrowing &borrowing : borrowings)
+    {
+        if (borrowing.bookId == id && !borrowing.returned)
+        {
+            cout << RED;
+            cout << "This book is currently issued and cannot be deleted.\n";
+            cout << RESET;
+
+            return;
+        }
     }
 
     string answer = readText("Delete this book? (y/n): ");
@@ -429,7 +542,7 @@ void deleteBook()
     }
 }
 
-// Book Management চালানো
+// Book Management
 void bookManagement()
 {
     int choice;
@@ -509,6 +622,7 @@ void addMember()
         cout << RED;
         cout << "A member with this ID already exists.\n";
         cout << RESET;
+
         return;
     }
 
@@ -526,7 +640,7 @@ void addMember()
     cout << RESET;
 }
 
-// View All Members
+// View all members
 void viewAllMembers()
 {
     cout << CYAN;
@@ -539,6 +653,7 @@ void viewAllMembers()
         cout << RED;
         cout << "No members found.\n";
         cout << RESET;
+
         return;
     }
 
@@ -567,6 +682,7 @@ void searchMember()
         cout << RED;
         cout << "Member not found.\n";
         cout << RESET;
+
         return;
     }
 
@@ -597,6 +713,7 @@ void updateMember()
         cout << RED;
         cout << "Member not found.\n";
         cout << RESET;
+
         return;
     }
 
@@ -626,7 +743,21 @@ void deleteMember()
         cout << RED;
         cout << "Member not found.\n";
         cout << RESET;
+
         return;
+    }
+
+    // Member with an issued book cannot be deleted
+    for (const Borrowing &borrowing : borrowings)
+    {
+        if (borrowing.memberId == id && !borrowing.returned)
+        {
+            cout << RED;
+            cout << "This member has an issued book and cannot be deleted.\n";
+            cout << RESET;
+
+            return;
+        }
     }
 
     string answer = readText("Delete this member? (y/n): ");
@@ -648,7 +779,7 @@ void deleteMember()
     }
 }
 
-// Member Management চালানো
+// Member Management
 void memberManagement()
 {
     int choice;
@@ -695,11 +826,272 @@ void memberManagement()
     } while (choice != 6);
 }
 
-// Program এখান থেকে শুরু
+// Issue Book
+void issueBook()
+{
+    cout << BLUE;
+    cout << "\n     ISSUE BOOK\n";
+    cout << "     ----------\n\n";
+    cout << RESET;
+
+    if (books.empty())
+    {
+        cout << RED;
+        cout << "No books are available. Add a book first.\n";
+        cout << RESET;
+
+        return;
+    }
+
+    if (members.empty())
+    {
+        cout << RED;
+        cout << "No members are available. Add a member first.\n";
+        cout << RESET;
+
+        return;
+    }
+
+    int bookId = readInt("Enter Book ID: ");
+    int bookIndex = findBookIndex(bookId);
+
+    if (bookIndex == -1)
+    {
+        cout << RED;
+        cout << "Book not found.\n";
+        cout << RESET;
+
+        return;
+    }
+
+    if (books[bookIndex].quantity <= 0)
+    {
+        cout << RED;
+        cout << "This book is currently unavailable.\n";
+        cout << RESET;
+
+        return;
+    }
+
+    int memberId = readInt("Enter Member ID: ");
+    int memberIndex = findMemberIndex(memberId);
+
+    if (memberIndex == -1)
+    {
+        cout << RED;
+        cout << "Member not found.\n";
+        cout << RESET;
+
+        return;
+    }
+
+    // Prevent issuing the same book twice to the same member
+    for (const Borrowing &borrowing : borrowings)
+    {
+        if (borrowing.bookId == bookId &&
+            borrowing.memberId == memberId &&
+            !borrowing.returned)
+        {
+            cout << RED;
+            cout << "This member has already borrowed this book.\n";
+            cout << RESET;
+
+            return;
+        }
+    }
+
+    string issueDate = readText("Issue date (DD-MM-YYYY): ");
+    string answer = readText("Confirm issue? (y/n): ");
+
+    if (answer != "y" && answer != "Y")
+    {
+        cout << YELLOW;
+        cout << "Book issue cancelled.\n";
+        cout << RESET;
+
+        return;
+    }
+
+    Borrowing borrowing;
+
+    borrowing.issueId = createIssueId();
+    borrowing.bookId = bookId;
+    borrowing.memberId = memberId;
+    borrowing.issueDate = issueDate;
+    borrowing.returnDate = "Not returned";
+    borrowing.returned = false;
+
+    borrowings.push_back(borrowing);
+
+    // Reduce available quantity
+    books[bookIndex].quantity--;
+
+    saveBooks();
+    saveBorrowings();
+
+    cout << GREEN;
+    cout << "\nBook issued successfully.\n";
+    cout << RESET;
+
+    cout << "Issue ID    : " << borrowing.issueId << '\n';
+    cout << "Book title  : " << books[bookIndex].title << '\n';
+    cout << "Member name : " << members[memberIndex].name << '\n';
+    cout << "Issue date  : " << borrowing.issueDate << '\n';
+    cout << "Available   : " << books[bookIndex].quantity << '\n';
+}
+
+// Return Book
+void returnBook()
+{
+    cout << BLUE;
+    cout << "\n     RETURN BOOK\n";
+    cout << "     -----------\n\n";
+    cout << RESET;
+
+    bool activeBorrowingFound = false;
+
+    cout << CYAN;
+    cout << "CURRENTLY ISSUED BOOKS\n";
+    cout << RESET;
+
+    // Show books that are not returned yet
+    for (const Borrowing &borrowing : borrowings)
+    {
+        if (!borrowing.returned)
+        {
+            activeBorrowingFound = true;
+
+            int bookIndex = findBookIndex(borrowing.bookId);
+            int memberIndex = findMemberIndex(borrowing.memberId);
+
+            cout << "Issue ID    : " << borrowing.issueId << '\n';
+            cout << "Book ID     : " << borrowing.bookId << '\n';
+            cout << "Book title  : ";
+
+            if (bookIndex != -1)
+            {
+                cout << books[bookIndex].title << '\n';
+            }
+            else
+            {
+                cout << "Unknown book\n";
+            }
+
+            cout << "Member ID   : " << borrowing.memberId << '\n';
+            cout << "Member name : ";
+
+            if (memberIndex != -1)
+            {
+                cout << members[memberIndex].name << '\n';
+            }
+            else
+            {
+                cout << "Unknown member\n";
+            }
+
+            cout << "Issue date  : " << borrowing.issueDate << '\n';
+            cout << "------------------------------\n";
+        }
+    }
+
+    if (!activeBorrowingFound)
+    {
+        cout << RED;
+        cout << "No issued book is waiting to be returned.\n";
+        cout << RESET;
+
+        return;
+    }
+
+    int issueId = readInt("Enter Issue ID: ");
+    int borrowingIndex = -1;
+
+    for (int i = 0; i < static_cast<int>(borrowings.size()); i++)
+    {
+        if (borrowings[i].issueId == issueId)
+        {
+            borrowingIndex = i;
+            break;
+        }
+    }
+
+    if (borrowingIndex == -1)
+    {
+        cout << RED;
+        cout << "Issue ID not found.\n";
+        cout << RESET;
+
+        return;
+    }
+
+    if (borrowings[borrowingIndex].returned)
+    {
+        cout << RED;
+        cout << "This book has already been returned.\n";
+        cout << RESET;
+
+        return;
+    }
+
+    int bookIndex =
+        findBookIndex(borrowings[borrowingIndex].bookId);
+
+    if (bookIndex == -1)
+    {
+        cout << RED;
+        cout << "Book information not found. Return cannot be completed.\n";
+        cout << RESET;
+
+        return;
+    }
+
+    string returnDate =
+        readText("Return date (DD-MM-YYYY): ");
+
+    string answer =
+        readText("Confirm return? (y/n): ");
+
+    if (answer != "y" && answer != "Y")
+    {
+        cout << YELLOW;
+        cout << "Book return cancelled.\n";
+        cout << RESET;
+
+        return;
+    }
+
+    borrowings[borrowingIndex].returned = true;
+    borrowings[borrowingIndex].returnDate = returnDate;
+
+    // Increase available quantity
+    books[bookIndex].quantity++;
+
+    saveBorrowings();
+    saveBooks();
+
+    cout << GREEN;
+    cout << "\nBook returned successfully.\n";
+    cout << RESET;
+
+    cout << "Issue ID    : "
+         << borrowings[borrowingIndex].issueId << '\n';
+
+    cout << "Book title  : "
+         << books[bookIndex].title << '\n';
+
+    cout << "Return date : "
+         << borrowings[borrowingIndex].returnDate << '\n';
+
+    cout << "Available   : "
+         << books[bookIndex].quantity << '\n';
+}
+
+// Program starts here
 int main()
 {
     loadBooks();
     loadMembers();
+    loadBorrowings();
 
     int choice;
 
@@ -719,15 +1111,11 @@ int main()
                 break;
 
             case 3:
-                cout << YELLOW;
-                cout << "Issue Book will be added later.\n";
-                cout << RESET;
+                issueBook();
                 break;
 
             case 4:
-                cout << YELLOW;
-                cout << "Return Book will be added later.\n";
-                cout << RESET;
+                returnBook();
                 break;
 
             case 5:
